@@ -26,7 +26,7 @@ the letters (W, NW…) the direction they come FROM, as in marine forecasts.
 3. Open the **Actions** tab → *Render weather sleep screen* → **Run workflow**.
    After ~1 minute a branch named `output` appears containing `weather.png`.
 4. Your image URL is now:
-   `https://raw.githubusercontent.com/<USER>/rm-weather/output/weather.png`
+   <https://raw.githubusercontent.com/philippedagher/rm-weather/output/weather.png>
    Open it in a browser to check it.
 
 Notes: GitHub cron runs in UTC and Lebanon changes between UTC+3 and UTC+2, so the
@@ -40,9 +40,10 @@ commits for 60 days — any small commit or pressing *Run workflow* re-enables i
 1. On the reMarkable: **Settings → Help → Copyrights and licenses**, scroll to
    *GPLv3 Compliance*: note the **password** for user `root`, and the IP address
    (over USB cable it is always `10.11.99.1`; over Wi-Fi it is the 192.168.x.x shown).
-2. Edit `device/update-weather.sh` on your Mac: replace `YOUR_GITHUB_USER` in the
-   `URL=` line with your GitHub username.
-3. From a Terminal on your Mac, copy the three device files to the tablet:
+2. The `URL=` line in `device/update-weather.sh` is already pointed at
+   <https://raw.githubusercontent.com/philippedagher/rm-weather/output/weather.png>,
+   so there is nothing to edit. (Change it only if you rename or fork the repo.)
+3. From a Terminal on your Mac, copy the four device files to the tablet:
    ```
    cd rm-weather/device
    scp update-weather.sh weather.service weather.timer install-on-device.sh root@10.11.99.1:/home/root/

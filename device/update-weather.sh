@@ -2,10 +2,11 @@
 # Runs ON the reMarkable 2. Downloads the latest rendered weather.png and
 # installs it as the sleep screen.
 #
-# Edit the URL below after you have created your GitHub repo:
+# The URL below points at this repo's "output" branch, which the GitHub Actions
+# workflow force-pushes a fresh weather.png to. Change it only for a fork/rename:
 #   https://raw.githubusercontent.com/<USER>/<REPO>/output/weather.png
 
-URL="https://raw.githubusercontent.com/YOUR_GITHUB_USER/rm-weather/output/weather.png"
+URL="https://raw.githubusercontent.com/philippedagher/rm-weather/output/weather.png"
 DEST="/home/root/weather/sleep.png"        # referenced by SleepScreenPath in xochitl.conf
 LEGACY="/usr/share/remarkable/suspended.png" # also overwritten, for OS versions that ignore SleepScreenPath
 RESTART_XOCHITL=0   # set to 1 ONLY if testing shows the old image sticks until reboot
