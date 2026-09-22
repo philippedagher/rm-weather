@@ -79,9 +79,11 @@ cat /etc/version                            # OS version
   (say), the missed run is caught up as soon as you wake it (`Persistent=true`), so the
   *next* sleep shows the 06:00 forecast. It cannot refresh while already showing the
   sleep image.
-* The timer uses the tablet's local clock. Check with `date` over SSH: if it prints UTC
-  instead of EEST/EET, change `OnCalendar` in `/etc/systemd/system/weather.timer` to
-  the UTC equivalents and run `systemctl daemon-reload`.
+* The timer uses the tablet's local clock, and this tablet runs in UTC (`date` over SSH
+  prints UTC, not EEST/EET). `weather.timer` therefore lists UTC hours, with both the
+  summer (UTC+3) and winter (UTC+2) candidates, so the DST switch needs no edit. If you
+  ever set the tablet's timezone to Asia/Beirut, change `OnCalendar` back to
+  `06,12,16,21:20:00` and run `systemctl daemon-reload`.
 * To go back to normal: `systemctl disable --now weather.timer`, then remove the
   `SleepScreenPath=` line from `/home/root/.config/remarkable/xochitl.conf`
   (with `systemctl stop xochitl` first, `systemctl start xochitl` after).

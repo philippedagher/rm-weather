@@ -1,9 +1,15 @@
 [Unit]
-Description=Fetch weather sleep screen at 06:20, 12:20, 16:20, 21:20 (local time)
+Description=Fetch weather sleep screen ~20 min after each Beirut render
 
 [Timer]
 # 20 min after the GitHub render, which is scheduled on the hour (GitHub can run a few minutes late).
-OnCalendar=*-*-* 06,12,16,21:20:00
+#
+# NOTE: this tablet's clock runs in UTC (check with `date` over SSH), and systemd
+# reads OnCalendar in the device's own timezone -- so these are UTC hours, not Beirut.
+# Renders happen at 06/12/16/21 Beirut, which is UTC 03,09,13,18 in summer (UTC+3)
+# and UTC 04,10,14,19 in winter (UTC+2). Both sets are listed so the switch needs no
+# edit; the extra runs cost nothing because update-weather.sh exits at "unchanged".
+OnCalendar=*-*-* 03,04,09,10,13,14,18,19:20:00
 # if the tablet was asleep at that moment, run as soon as it is awake again
 Persistent=true
 AccuracySec=1min

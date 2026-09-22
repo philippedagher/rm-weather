@@ -30,8 +30,10 @@ until download; do
     sleep 10
 done
 
-# sanity check: must be a PNG (starts with the PNG signature) and not tiny
-if [ "$(head -c 4 "$TMP" | od -An -c | tr -d ' ')" != "211PNG" ] || [ "$(wc -c < "$TMP")" -lt 10000 ]; then
+# sanity check: must be a PNG (signature in the first bytes) and not tiny.
+# NOTE: the tablet's busybox head has no -c and its od has no -A, so the obvious
+# "head -c 4 | od -An -c" spelling silently fails and rejects every good image.
+if ! dd if="$TMP" bs=8 count=1 2>/dev/null | grep -q PNG || [ "$(wc -c < "$TMP")" -lt 10000 ]; then
     echo "downloaded file is not a valid PNG"; rm -f "$TMP"; exit 1
 fi
 
