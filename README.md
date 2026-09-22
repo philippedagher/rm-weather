@@ -16,6 +16,13 @@ Swell comes from the Open-Meteo marine model at 34.243169, 35.658553
 (`SEA_LAT/SEA_LON` in `render_weather.py`); arrows show where wind/swell travel TO,
 the letters (W, NW…) the direction they come FROM, as in marine forecasts.
 
+Models are pinned to the ones Windguru's free view shows — `gfs_seamless` for the
+weather and `ncep_gfswave025` (NOAA WaveWatch III / GFS-Wave) for the swell — so the
+numbers here line up with Windguru. `MODEL_WEATHER` / `MODEL_MARINE` in
+`render_weather.py` change this. Open-Meteo's default, `best_match`, resolves to
+ICON-EU (7 km, finer than GFS) plus Météo-France MFWAM at this spot; the models
+genuinely disagree on swell, so switching changes both height and period.
+
 ## Part A — the renderer on GitHub (done)
 
 Repo: <https://github.com/philippedagher/rm-weather> — public, so the tablet

@@ -39,6 +39,17 @@ W, H = 1404, 1872                      # reMarkable 2
 MARGIN = 60
 
 TZQ = TZ.replace("/", "%2F")
+
+# Forecast models, pinned deliberately. Windguru's free view shows GFS for the
+# weather columns and NOAA's WaveWatch III / GFS-Wave for the swell columns, so
+# these keep our numbers in step with what it displays. Open-Meteo's default is
+# "best_match", which resolves to ICON-EU + MFWAM at this location -- higher
+# resolution, but different numbers, and it can change without notice as models
+# are added. Pinning also means a model outage shows up as a failure here rather
+# than as a silent switch to another model.
+MODEL_WEATHER = "gfs_seamless"       # GFS, ~13 km  (Windguru "GFS 13")
+MODEL_MARINE = "ncep_gfswave025"     # GFS-Wave 0.25 deg  (Windguru's wave data)
+
 API_WEATHER = (
     "https://api.open-meteo.com/v1/forecast"
     f"?latitude={LAT}&longitude={LON}"
@@ -47,6 +58,7 @@ API_WEATHER = (
     "precipitation_probability_max,wind_speed_10m_max,wind_gusts_10m_max,"
     "wind_direction_10m_dominant,sunrise,sunset"
     f"&timezone={TZQ}&forecast_days={DAYS}&wind_speed_unit=kmh"
+    f"&models={MODEL_WEATHER}"
 )
 API_MARINE = (
     "https://marine-api.open-meteo.com/v1/marine"
@@ -54,6 +66,7 @@ API_MARINE = (
     "&hourly=swell_wave_height,swell_wave_period,swell_wave_direction,wave_height"
     "&daily=swell_wave_height_max,swell_wave_period_max,swell_wave_direction_dominant,wave_height_max"
     f"&timezone={TZQ}&forecast_days={DAYS}"
+    f"&models={MODEL_MARINE}"
 )
 
 HERE = os.path.dirname(os.path.abspath(__file__))
