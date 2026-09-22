@@ -1,0 +1,12 @@
+[Unit]
+Description=Fetch weather sleep screen at 06:20, 12:20, 16:20, 21:20 (local time)
+
+[Timer]
+# 20 min after the GitHub render, which is scheduled on the hour (GitHub can run a few minutes late).
+OnCalendar=*-*-* 06,12,16,21:20:00
+# if the tablet was asleep at that moment, run as soon as it is awake again
+Persistent=true
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

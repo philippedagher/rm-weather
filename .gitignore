@@ -1,0 +1,5 @@
+# leftover stub from an earlier attempt
+rm-weather/
+__pycache__/
+*.pyc
+weather.png
