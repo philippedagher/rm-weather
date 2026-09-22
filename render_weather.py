@@ -50,24 +50,92 @@ TZQ = TZ.replace("/", "%2F")
 MODEL_WEATHER = "gfs_seamless"       # GFS, ~13 km  (Windguru "GFS 13")
 MODEL_MARINE = "ncep_gfswave025"     # GFS-Wave 0.25 deg  (Windguru's wave data)
 
-API_WEATHER = (
-    "https://api.open-meteo.com/v1/forecast"
-    f"?latitude={LAT}&longitude={LON}"
-    "&hourly=precipitation_probability,wind_speed_10m,wind_gusts_10m,wind_direction_10m"
-    "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,"
-    "precipitation_probability_max,wind_speed_10m_max,wind_gusts_10m_max,"
-    "wind_direction_10m_dominant,sunrise,sunset"
-    f"&timezone={TZQ}&forecast_days={DAYS}&wind_speed_unit=kmh"
-    f"&models={MODEL_WEATHER}"
-)
-API_MARINE = (
-    "https://marine-api.open-meteo.com/v1/marine"
-    f"?latitude={SEA_LAT}&longitude={SEA_LON}"
-    "&hourly=swell_wave_height,swell_wave_period,swell_wave_direction,wave_height"
-    "&daily=swell_wave_height_max,swell_wave_period_max,swell_wave_direction_dominant,wave_height_max"
-    f"&timezone={TZQ}&forecast_days={DAYS}"
-    f"&models={MODEL_MARINE}"
-)
+
+def build_urls():
+    """Build both API URLs from the module-level location constants.
+
+    Called once at import, and again after resolve_location() has overridden
+    those constants with whatever the admin set in payadapt.
+    """
+    tzq = TZ.replace("/", "%2F")
+    weather = (
+        "https://api.open-meteo.com/v1/forecast"
+        f"?latitude={LAT}&longitude={LON}"
+        "&hourly=precipitation_probability,wind_speed_10m,wind_gusts_10m,wind_direction_10m"
+        "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,"
+        "precipitation_probability_max,wind_speed_10m_max,wind_gusts_10m_max,"
+        "wind_direction_10m_dominant,sunrise,sunset"
+        f"&timezone={tzq}&forecast_days={DAYS}&wind_speed_unit=kmh"
+        f"&models={MODEL_WEATHER}"
+    )
+    marine = (
+        "https://marine-api.open-meteo.com/v1/marine"
+        f"?latitude={SEA_LAT}&longitude={SEA_LON}"
+        "&hourly=swell_wave_height,swell_wave_period,swell_wave_direction,wave_height"
+        "&daily=swell_wave_height_max,swell_wave_period_max,swell_wave_direction_dominant,wave_height_max"
+        f"&timezone={tzq}&forecast_days={DAYS}"
+        f"&models={MODEL_MARINE}"
+    )
+    return weather, marine
+
+
+API_WEATHER, API_MARINE = build_urls()
+
+
+def resolve_location():
+    """Override the location constants from payadapt, when configured.
+
+    The GitHub Action passes SUPABASE_URL / SUPABASE_ANON_KEY (repo secrets) and
+    optionally HOME_SLUG. The RPC only returns homes that opted in via
+    weather_remarkable, so a wrong or missing slug yields nothing.
+
+    Every failure here is deliberately non-fatal: the constants above are the
+    values this screen has always used, so a Supabase outage, a renamed slug or
+    a half-applied migration leaves the tablet rendering Batroun rather than
+    going blank. The reason is printed so it shows up in the Actions log.
+    """
+    global PLACE, LAT, LON, TZ, SEA_LAT, SEA_LON, API_WEATHER, API_MARINE
+
+    base = os.environ.get("SUPABASE_URL", "").strip()
+    key = os.environ.get("SUPABASE_ANON_KEY", "").strip()
+    slug = os.environ.get("HOME_SLUG", "dagher").strip()
+    if not base or not key:
+        print("no SUPABASE_URL/SUPABASE_ANON_KEY set - using built-in location",
+              file=sys.stderr)
+        return
+
+    url = base.rstrip("/") + "/rest/v1/rpc/get_remarkable_weather_config"
+    body = json.dumps({"p_slug": slug}).encode()
+    req = urllib.request.Request(
+        url, data=body, method="POST",
+        headers={"apikey": key, "Authorization": f"Bearer {key}",
+                 "Content-Type": "application/json",
+                 "User-Agent": "rm-weather/1.0"},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
+            rows = json.load(r)
+    except Exception as e:
+        print(f"could not read location for '{slug}' ({e}) - using built-in location",
+              file=sys.stderr)
+        return
+
+    row = rows[0] if isinstance(rows, list) and rows else None
+    if not row or row.get("lat") is None or row.get("lon") is None:
+        print(f"no reMarkable-enabled location for '{slug}' - using built-in location",
+              file=sys.stderr)
+        return
+
+    PLACE = (row.get("place") or row.get("home_name") or PLACE).upper()
+    LAT, LON = float(row["lat"]), float(row["lon"])
+    TZ = row.get("timezone") or TZ
+    # A home with no sea point keeps the swell panel empty rather than querying
+    # a stale coordinate from the previous location.
+    SEA_LAT = float(row["sea_lat"]) if row.get("sea_lat") is not None else None
+    SEA_LON = float(row["sea_lon"]) if row.get("sea_lon") is not None else None
+    API_WEATHER, API_MARINE = build_urls()
+    print(f"location for '{slug}': {PLACE} {LAT},{LON} {TZ}", file=sys.stderr)
+
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FONT_DIR = os.path.join(HERE, "fonts")
@@ -122,6 +190,8 @@ def get_json(url):
 
 def fetch():
     wx = get_json(API_WEATHER)
+    if SEA_LAT is None or SEA_LON is None:
+        return {"wx": wx, "sea": {"hourly": {}, "daily": {}}}
     try:
         sea = get_json(API_MARINE)
     except Exception as e:        # marine API down -> still render the rest
@@ -413,6 +483,8 @@ def main():
     ap.add_argument("--out", default=os.path.join(HERE, "weather.png"))
     ap.add_argument("--mock", action="store_true")
     a = ap.parse_args()
+    if not a.mock:
+        resolve_location()
     data = mock() if a.mock else fetch()
     if "hourly" not in data["wx"] or "daily" not in data["wx"]:
         print("unexpected API response:", json.dumps(data["wx"])[:300], file=sys.stderr)

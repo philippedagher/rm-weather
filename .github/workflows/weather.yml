@@ -45,6 +45,16 @@ jobs:
 
       - name: Render PNG from Open-Meteo
         if: steps.gate.outputs.run == 'true'
+        # The location comes from the payadapt home whose slug is HOME_SLUG, via
+        # the get_remarkable_weather_config RPC. If these secrets are absent or
+        # the call fails, render_weather.py falls back to its built-in Batroun
+        # coordinates, so the sleep screen never goes blank. Both values are
+        # safe to hold as secrets: the anon key is a public client key and the
+        # RPC only exposes homes that opted in.
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          HOME_SLUG: ${{ vars.HOME_SLUG || 'dagher' }}
         run: python3 render_weather.py --out /tmp/weather.png
 
       - name: Publish to the "output" branch (single commit, no history growth)
