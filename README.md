@@ -16,18 +16,17 @@ Swell comes from the Open-Meteo marine model at 34.243169, 35.658553
 (`SEA_LAT/SEA_LON` in `render_weather.py`); arrows show where wind/swell travel TO,
 the letters (W, NW…) the direction they come FROM, as in marine forecasts.
 
-## Part A — the renderer on GitHub (once, ~5 minutes)
+## Part A — the renderer on GitHub (done)
 
-1. Create a new **public** repository on github.com, e.g. `rm-weather`
-   (public is simplest: the tablet downloads the PNG without any token).
-2. Upload the contents of this folder to it (drag-and-drop in the GitHub web UI
-   works: `render_weather.py`, `fonts/`, `.github/workflows/weather.yml`, `README.md`).
-   The `device/` folder can be uploaded too; it is only used on the tablet.
-3. Open the **Actions** tab → *Render weather sleep screen* → **Run workflow**.
-   After ~1 minute a branch named `output` appears containing `weather.png`.
-4. Your image URL is now:
-   <https://raw.githubusercontent.com/philippedagher/rm-weather/output/weather.png>
-   Open it in a browser to check it.
+Repo: <https://github.com/philippedagher/rm-weather> — public, so the tablet
+downloads the PNG without needing any token.
+
+The workflow renders on the schedule below, on every push to `main`, and on demand
+from the **Actions** tab → *Render weather sleep screen* → **Run workflow**. Each
+run force-pushes a single commit to the `output` branch, so history never grows.
+
+Image URL (open it in a browser to check):
+<https://raw.githubusercontent.com/philippedagher/rm-weather/output/weather.png>
 
 Notes: GitHub cron runs in UTC and Lebanon changes between UTC+3 and UTC+2, so the
 workflow is triggered at both possible UTC hours and a first step checks the Beirut
@@ -91,5 +90,9 @@ cat /etc/version                            # OS version
 
 Everything is in `render_weather.py`: `LAT/LON`, `SEA_LAT/SEA_LON`, `HOURS_AHEAD`,
 `DAYS`, labels, fonts. Update times: the cron line + gate hours in
-`.github/workflows/weather.yml`, and `OnCalendar` in `device/weather.timer`. Test locally on the Mac with `pip3 install pillow && python3 render_weather.py`
+`.github/workflows/weather.yml`, and `OnCalendar` in `device/weather.timer`.
+Pushing any change under `.github/workflows/` needs a token with the `workflow`
+scope (`gh auth refresh -s workflow` once), otherwise GitHub rejects the push.
+
+Test locally on the Mac with `pip3 install pillow && python3 render_weather.py`
 (writes `weather.png` next to the script) or `--mock` for fake data.
