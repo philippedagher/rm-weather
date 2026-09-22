@@ -21,14 +21,48 @@ jobs:
   render:
     runs-on: ubuntu-latest
     steps:
-      - name: Gate on Beirut local hour (06, 12, 16, 21)
+      - name: Decide whether to render (by staleness, not clock hour)
         id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          # How old the published image must be before a scheduled run redraws it.
+          #
+          # This replaced a gate that compared the current Beirut hour against
+          # 06/12/16/21. That only worked if cron was punctual, and it is not:
+          # GitHub delivered these runs 1-2 h late, by which point the Beirut
+          # hour had moved on and every scheduled run skipped itself. Renders
+          # only ever happened on pushes.
+          #
+          # Staleness has no such assumption. The four intended renders are at
+          # least 4 h apart (09->13 UTC in summer) and the two UTC candidates for
+          # one Beirut slot are 1 h apart, so any threshold between 60 and 240
+          # minutes yields four renders a day and collapses the DST pair --
+          # however late the run actually arrives.
+          MAX_AGE_MIN: "210"
         run: |
-          H=$(TZ=Asia/Beirut date +%H)
-          echo "Beirut hour: $H  (event: ${{ github.event_name }})"
-          if [ "${{ github.event_name }}" != "schedule" ] || echo "06 12 16 21" | grep -qw "$H"; then
+          set -u
+          if [ "${{ github.event_name }}" != "schedule" ]; then
+            echo "event=${{ github.event_name }} -> render"
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          LAST=$(curl -sS -H "Authorization: Bearer $GH_TOKEN" \
+                      -H "Accept: application/vnd.github+json" \
+                      "https://api.github.com/repos/${{ github.repository }}/branches/output" \
+                 | jq -r '.commit.commit.committer.date // empty' 2>/dev/null || true)
+          if [ -z "$LAST" ]; then
+            echo "no published image yet -> render"
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          AGE=$(( ( $(date -u +%s) - $(date -u -d "$LAST" +%s) ) / 60 ))
+          echo "published $LAST -> $AGE min old (threshold $MAX_AGE_MIN)"
+          echo "Beirut now $(TZ=Asia/Beirut date '+%F %H:%M')"
+          if [ "$AGE" -ge "$MAX_AGE_MIN" ]; then
+            echo "stale -> render"
             echo "run=true" >> "$GITHUB_OUTPUT"
           else
+            echo "fresh enough -> skip"
             echo "run=false" >> "$GITHUB_OUTPUT"
           fi
 

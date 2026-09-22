@@ -36,10 +36,21 @@ Image URL (open it in a browser to check):
 <https://raw.githubusercontent.com/philippedagher/rm-weather/output/weather.png>
 
 Notes: GitHub cron runs in UTC and Lebanon changes between UTC+3 and UTC+2, so the
-workflow is triggered at both possible UTC hours and a first step checks the Beirut
-clock, doing the work only at 06, 12, 16 and 21 h (the other runs exit in seconds).
-GitHub may start a run a few minutes late. It also pauses schedules in repos with no
-commits for 60 days — any small commit or pressing *Run workflow* re-enables it.
+workflow is triggered at both possible UTC hours — eight times a day — and a first
+step decides whether to actually render.
+
+That step goes by **staleness, not clock hour**: it redraws only when the published
+image is older than `MAX_AGE_MIN` (210 min). Because the four intended renders are at
+least 4 h apart and the two UTC candidates for one Beirut slot are 1 h apart, any
+threshold between those bounds yields four renders a day and collapses the DST pair.
+
+It deliberately does not compare the current Beirut hour against 06/12/16/21, which is
+what it used to do. GitHub delivers cron 1–2 h late often enough that the hour had
+always moved on by the time a run started, so every scheduled run skipped itself and
+the screen only ever updated when something was pushed.
+
+GitHub also pauses schedules in repos with no commits for 60 days — any small commit
+or pressing *Run workflow* re-enables it.
 
 ## Part B — the tablet (once, ~10 minutes)
 
