@@ -76,6 +76,29 @@ or pressing *Run workflow* re-enables it.
 5. Test: press the power button to put the tablet to sleep. The weather
    dashboard should be the sleep screen.
 
+## Reaching the tablet
+
+Its Wi-Fi address comes from DHCP and moves (it has already gone .37 -> .33), and
+a sleeping reMarkable leaves the network entirely, so a fixed address in
+`~/.ssh/config` goes stale. `mac/remarkable-resolve.sh` is a ProxyCommand that
+finds it by MAC instead: it reads the ARP cache, confirms the candidate actually
+answers on port 22, and sweeps the local /24 if the tablet is not cached yet.
+Copy it to `~/.ssh/`, set `MAC` to your tablet's, and point a host at it:
+
+```
+Host remarkable
+  ProxyCommand ~/.ssh/remarkable-resolve.sh %p
+  User root
+  IdentityFile ~/.ssh/remarkable_ed25519
+  IdentitiesOnly yes
+```
+
+No `HostName`: the ProxyCommand makes the connection, so ssh records the host key
+under the name `remarkable` and it stays valid when the address changes.
+
+A fixed DHCP lease in the router solves the same problem and is worth doing too;
+this just means nothing breaks when it is not set.
+
 ## Checking / troubleshooting (on the tablet, over SSH)
 
 ```
