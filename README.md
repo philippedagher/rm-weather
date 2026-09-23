@@ -78,26 +78,33 @@ or pressing *Run workflow* re-enables it.
 
 ## Reaching the tablet
 
-Its Wi-Fi address comes from DHCP and moves (it has already gone .37 -> .33), and
-a sleeping reMarkable leaves the network entirely, so a fixed address in
-`~/.ssh/config` goes stale. `mac/remarkable-resolve.sh` is a ProxyCommand that
-finds it by MAC instead: it reads the ARP cache, confirms the candidate actually
-answers on port 22, and sweeps the local /24 if the tablet is not cached yet.
-Copy it to `~/.ssh/`, set `MAC` to your tablet's, and point a host at it:
+The tablet now holds a DHCP reservation in the router, so `~/.ssh/config` points
+straight at that address:
 
 ```
 Host remarkable
-  ProxyCommand ~/.ssh/remarkable-resolve.sh %p
+  HostName 192.168.86.33
   User root
   IdentityFile ~/.ssh/remarkable_ed25519
   IdentitiesOnly yes
 ```
 
-No `HostName`: the ProxyCommand makes the connection, so ssh records the host key
-under the name `remarkable` and it stays valid when the address changes.
+Before that reservation its address moved (.37 -> .33) and ssh broke each time.
+`mac/remarkable-resolve.sh` is the fallback for that: a ProxyCommand that finds
+the tablet by MAC — reading the ARP cache, confirming the candidate actually
+answers on port 22, and sweeping the local /24 if it is not cached yet. Copy it
+to `~/.ssh/`, set `MAC` to your tablet's, and swap the `HostName` line for:
 
-A fixed DHCP lease in the router solves the same problem and is worth doing too;
-this just means nothing breaks when it is not set.
+```
+  ProxyCommand ~/.ssh/remarkable-resolve.sh %p
+```
+
+Drop `HostName` when using it: the ProxyCommand makes the connection, so ssh
+records the host key under the name `remarkable` and it stays valid as the
+address changes.
+
+Note that a sleeping reMarkable leaves the network entirely — neither approach
+can reach it until it is awake.
 
 ## Checking / troubleshooting (on the tablet, over SSH)
 
