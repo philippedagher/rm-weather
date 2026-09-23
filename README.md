@@ -90,9 +90,22 @@ cat /etc/version                            # OS version
   caches the sleep image. Edit `/home/root/weather/update-weather.sh` and set
   `RESTART_XOCHITL=1`: the UI restarts for ~10 s whenever a *new* image arrives
   (at most 4 times a day, and only when the tablet is awake and on Wi-Fi).
+* **After a reMarkable OS update the screen stops refreshing.** An update replaces
+  `/etc` and `/usr` wholesale, so `weather.service` and `weather.timer` disappear and
+  nothing downloads any more; `/usr/share/remarkable/suspended.png` also reverts to the
+  factory image. `/home/root` survives, so `sleep.png`, `update-weather.sh` and
+  `xochitl.conf` (with its `SleepScreenPath`) are all still there — which is why the
+  old picture keeps showing and the failure is easy to miss. Recover on the device,
+  no Mac needed:
+  ```
+  ssh remarkable 'sh /home/root/weather/reinstall.sh'
+  ```
+  Check with `systemctl is-active weather.timer` — `inactive` or `not-found` means the
+  update wiped it. (`install-on-device.sh` leaves that reinstall script, plus copies of
+  the two unit files, under `/home/root/weather/` for exactly this.)
 * OS 3.14–3.19 ignore `SleepScreenPath`; the script also overwrites
   `/usr/share/remarkable/suspended.png`, which works there, but that file is reset by
-  every OS update — just re-run `sh /home/root/weather/update-weather.sh` after updating.
+  every OS update — `reinstall.sh` restores it as part of its run.
 * While asleep the tablet has no Wi-Fi and no timers run. If it was asleep at 06:20
   (say), the missed run is caught up as soon as you wake it (`Persistent=true`), so the
   *next* sleep shows the 06:00 forecast. It cannot refresh while already showing the

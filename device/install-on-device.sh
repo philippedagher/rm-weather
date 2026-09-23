@@ -6,6 +6,22 @@ mkdir -p /home/root/weather
 cp update-weather.sh /home/root/weather/update-weather.sh
 chmod +x /home/root/weather/update-weather.sh
 cp weather.service weather.timer /etc/systemd/system/
+# Keep a copy on the home partition. An OS update replaces /etc and /usr
+# wholesale -- the timer and service vanish and the sleep screen quietly stops
+# refreshing -- but /home/root survives, so reinstalling needs nothing from the
+# Mac: just run  sh /home/root/weather/reinstall.sh
+cp weather.service weather.timer /home/root/weather/
+cat > /home/root/weather/reinstall.sh <<'REINSTALL'
+#!/bin/sh
+# Re-run after a reMarkable OS update, which wipes /etc/systemd/system.
+set -e
+cp /home/root/weather/weather.service /home/root/weather/weather.timer /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable --now weather.timer
+sh /home/root/weather/update-weather.sh || true
+echo "reinstalled; next run:"; systemctl list-timers weather.timer --no-pager | head -n 2
+REINSTALL
+chmod +x /home/root/weather/reinstall.sh
 systemctl daemon-reload
 systemctl enable --now weather.timer
 # first download right now
