@@ -6,6 +6,10 @@ on:
     # UTC+2 in winter, so both UTC candidates are listed and the "gate" step below
     # skips the run whose Beirut hour is not one of the four.
     - cron: "2 3,4,9,10,13,14,18,19 * * *"
+    # Polls for a "Refresh image" request from the payadapt weather modal. This
+    # one never redraws on its own -- it only acts when a request postdates the
+    # published image -- so it is cheap despite firing often.
+    - cron: "*/10 * * * *"
   workflow_dispatch:           # lets you run it by hand from the Actions tab
   push:
     branches: [main]
@@ -25,6 +29,10 @@ jobs:
         id: gate
         env:
           GH_TOKEN: ${{ github.token }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          HOME_SLUG: ${{ vars.HOME_SLUG || 'dagher' }}
+          POLL_CRON: "*/10 * * * *"
           # How old the published image must be before a scheduled run redraws it.
           #
           # This replaced a gate that compared the current Beirut hour against
@@ -55,9 +63,44 @@ jobs:
             echo "run=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          AGE=$(( ( $(date -u +%s) - $(date -u -d "$LAST" +%s) ) / 60 ))
+          PUBLISHED_TS=$(date -u -d "$LAST" +%s)
+          AGE=$(( ( $(date -u +%s) - PUBLISHED_TS ) / 60 ))
           echo "published $LAST -> $AGE min old (threshold $MAX_AGE_MIN)"
           echo "Beirut now $(TZ=Asia/Beirut date '+%F %H:%M')"
+
+          # An explicit "Refresh image" press in payadapt beats every other rule.
+          # It is consumed implicitly: publishing moves the image's timestamp past
+          # the request, so the same press cannot trigger a second render.
+          REQUESTED=""
+          if [ -n "${SUPABASE_URL:-}" ] && [ -n "${SUPABASE_ANON_KEY:-}" ]; then
+            REQUESTED=$(curl -sS -X POST \
+              "${SUPABASE_URL%/}/rest/v1/rpc/get_remarkable_weather_config" \
+              -H "apikey: $SUPABASE_ANON_KEY" \
+              -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+              -H "Content-Type: application/json" \
+              -d "{\"p_slug\":\"$HOME_SLUG\"}" \
+              | jq -r '.[0].render_requested_at // empty' 2>/dev/null || true)
+          fi
+          if [ -n "$REQUESTED" ]; then
+            REQUESTED_TS=$(date -u -d "$REQUESTED" +%s 2>/dev/null || echo 0)
+            echo "refresh requested at $REQUESTED"
+            if [ "$REQUESTED_TS" -gt "$PUBLISHED_TS" ]; then
+              echo "requested after the published image -> render"
+              echo "run=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            echo "request already satisfied by the published image"
+          fi
+
+          # The frequent poll exists only to catch requests; it never redraws on
+          # staleness, or it would replace the four-a-day cadence with one render
+          # every MAX_AGE_MIN.
+          if [ "${{ github.event.schedule }}" = "$POLL_CRON" ]; then
+            echo "poll run, nothing requested -> skip"
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
           if [ "$AGE" -ge "$MAX_AGE_MIN" ]; then
             echo "stale -> render"
             echo "run=true" >> "$GITHUB_OUTPUT"
