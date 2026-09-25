@@ -132,10 +132,15 @@ ls -la /home/root/weather/                  # sleep.png should be ~80-120 KB
 cat /etc/version                            # OS version
 ```
 
-* Image never changes after the first one (only after a reboot)? Your OS version
-  caches the sleep image. Edit `/home/root/weather/update-weather.sh` and set
-  `RESTART_XOCHITL=1`: the UI restarts for ~10 s whenever a *new* image arrives
-  (at most 4 times a day, and only when the tablet is awake and on Wi-Fi).
+* **reMarkable OS 5.x caches the sleep image**, so `RESTART_XOCHITL=1` is now the
+  default in `update-weather.sh`. xochitl reads the image once at startup and keeps
+  showing that copy; replacing the file changes nothing until the UI restarts. This
+  was confirmed on 5.8.203 — `sleep.png` matched what GitHub had published
+  byte-for-byte while the screen still showed an older forecast, and a
+  `systemctl restart xochitl` made it appear immediately. The script restarts the UI
+  (~10 s) only when the image actually changed, so a few times a day at most, and
+  only while the tablet is awake and online; an `unchanged` run leaves it alone.
+  Set it back to 0 if a future OS picks the file up on its own.
 * **After a reMarkable OS update the screen stops refreshing.** An update replaces
   `/etc` and `/usr` wholesale, so `weather.service` and `weather.timer` disappear and
   nothing downloads any more; `/usr/share/remarkable/suspended.png` also reverts to the

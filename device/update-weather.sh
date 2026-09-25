@@ -9,7 +9,14 @@
 URL="https://raw.githubusercontent.com/philippedagher/rm-weather/output/weather.png"
 DEST="/home/root/weather/sleep.png"        # referenced by SleepScreenPath in xochitl.conf
 LEGACY="/usr/share/remarkable/suspended.png" # also overwritten, for OS versions that ignore SleepScreenPath
-RESTART_XOCHITL=0   # set to 1 ONLY if testing shows the old image sticks until reboot
+# reMarkable OS 5.x loads the sleep image once, when xochitl starts, and then
+# keeps showing that copy -- replacing the file changes nothing until the UI
+# restarts. Confirmed on 5.8.203: the screen was stuck on an old forecast
+# while sleep.png already matched what GitHub had published. Restarting only
+# happens when the image actually changed, so at most a few times a day, and
+# only while the tablet is awake and online. Set to 0 if a future OS picks up
+# the file on its own.
+RESTART_XOCHITL=1
 
 TMP="$DEST.tmp"
 mkdir -p "$(dirname "$DEST")"
