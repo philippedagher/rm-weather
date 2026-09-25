@@ -49,14 +49,21 @@ what it used to do. GitHub delivers cron 1–2 h late often enough that the hour
 always moved on by the time a run started, so every scheduled run skipped itself and
 the screen only ever updated when something was pushed.
 
-A second schedule, `*/10 * * * *`, exists only to catch a **Refresh image** press
-in the payadapt weather modal. That button writes `weather_render_requested_at`
-on the home row; this workflow renders when that timestamp is newer than the
-published PNG, and never redraws on staleness, so it does not disturb the
-four-a-day cadence. Going through the database rather than calling GitHub
-directly means no `actions:write` token has to exist anywhere — the trade is
-that a press takes effect within about ten minutes rather than instantly. The
+The **Refresh image** button in the payadapt weather modal writes
+`weather_render_requested_at` on the home row, and the gate renders whenever that
+timestamp is newer than the published PNG. Going through the database rather than
+calling GitHub directly means no `actions:write` token exists anywhere. The
 request clears itself: publishing moves the image's timestamp past it.
+
+A `*/10` schedule was tried so a press would be picked up within minutes, and
+removed again. GitHub delivered none of it — and nothing else either while it was
+present, including the ordinary slots — so it bought no responsiveness and looked
+likely to get the whole workflow deprioritised. Measured delivery for the eight-
+slot schedule alone is four runs a day, i.e. **half the requested runs are
+dropped**, which is normal for scheduled workflows on a free public repo. A press
+is therefore honoured by the next scheduled run that actually arrives, typically
+within a few hours. For an immediate render, use *Run workflow* in the Actions
+tab, which is a `workflow_dispatch` and always executes.
 
 GitHub also pauses schedules in repos with no commits for 60 days — any small commit
 or pressing *Run workflow* re-enables it.
